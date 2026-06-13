@@ -43,11 +43,13 @@ const ServicePage: React.FC = () => {
           const appointmentDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
           const appointmentTime = `${appointmentDate.getFullYear()}-${String(appointmentDate.getMonth() + 1).padStart(2, '0')}-${String(appointmentDate.getDate()).padStart(2, '0')} 10:00`;
 
+          const serviceType = service.id === '1' ? 'meal' :
+                            service.id === '2' ? 'barber' :
+                            service.id === '3' ? 'accompany' : 'visit';
+
           addServiceOrder({
             serviceName: service.name,
-            serviceType: service.id === '1' ? 'meal' :
-                        service.id === '2' ? 'barber' :
-                        service.id === '3' ? 'accompany' : 'visit',
+            serviceType,
             appointmentTime,
             status: 'pending',
             staffName: '待分配',
@@ -55,41 +57,32 @@ const ServicePage: React.FC = () => {
           });
 
           Taro.showToast({
-            title: '预约成功，服务站正在处理...',
+            title: '预约成功',
             icon: 'success',
             duration: 2000
           });
 
-          setTimeout(() => {
-            Taro.showToast({
-              title: '服务站已确认订单',
-              icon: 'success'
-            });
-          }, 2000);
-
           setActiveTab('orders');
-        }
-      }
-    });
-  };
 
-  const simulateServiceStationConfirm = (orderId: string) => {
-    const randomStaff = staffList[Math.floor(Math.random() * staffList.length)];
+          setTimeout(() => {
+            const latestOrders = getActiveOrders();
+            const latestOrder = latestOrders[0];
 
-    Taro.showModal({
-      title: '模拟服务站处理',
-      content: `将为订单分配服务人员：${randomStaff.name}`,
-      success: (res) => {
-        if (res.confirm) {
-          updateOrderStatus(orderId, 'confirmed', {
-            name: randomStaff.name,
-            phone: randomStaff.phone
-          });
+            if (latestOrder && latestOrder.status === 'pending') {
+              const randomStaff = staffList[Math.floor(Math.random() * staffList.length)];
 
-          Taro.showToast({
-            title: '订单已确认',
-            icon: 'success'
-          });
+              updateOrderStatus(latestOrder.id, 'confirmed', {
+                name: randomStaff.name,
+                phone: randomStaff.phone
+              });
+
+              Taro.showToast({
+                title: '服务站已确认订单',
+                icon: 'success',
+                duration: 2000
+              });
+            }
+          }, 2000);
         }
       }
     });
@@ -132,7 +125,20 @@ const ServicePage: React.FC = () => {
   };
 
   const getStatusText = (status: string) => {
-    return serviceStatusLabels[status as keyof typeof serviceStatusLabels] || status;
+    switch (status) {
+      case 'pending':
+        return '待确认';
+      case 'confirmed':
+        return '已确认';
+      case 'in_service':
+        return '服务中';
+      case 'completed':
+        return '已完成';
+      case 'cancelled':
+        return '已取消';
+      default:
+        return status;
+    }
   };
 
   return (
@@ -208,25 +214,11 @@ const ServicePage: React.FC = () => {
                     )}
                   </View>
 
-                  {order.status === 'pending' && (
-                    <View className={styles.staffInfo}>
-                      <Button
-                        className={styles.simulateButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          simulateServiceStationConfirm(order.id);
-                        }}
-                      >
-                        模拟服务站确认
-                      </Button>
-                    </View>
-                  )}
-
                   {order.staffName && order.staffName !== '待分配' && (
                     <View className={styles.staffInfo}>
                       <View className={styles.staffRow}>
                         <Text className={styles.staffName}>
-                          服务人员：{order.staffName}
+                          👨‍💼 {order.staffName}
                         </Text>
                         <Button
                           className={styles.callButton}

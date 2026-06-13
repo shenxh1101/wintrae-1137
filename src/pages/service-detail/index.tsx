@@ -34,7 +34,7 @@ const ServiceDetailPage: React.FC = () => {
   }, [orderId, getOrderById]);
 
   const getStatusInfo = () => {
-    if (!order) return { icon: '❓', text: '加载中', color: '#86909c' };
+    if (!order) return { icon: '⏳', text: '待确认', color: '#86909c' };
 
     switch (order.status) {
       case 'pending':
@@ -55,7 +55,7 @@ const ServiceDetailPage: React.FC = () => {
   const statusInfo = getStatusInfo();
 
   const handleCall = () => {
-    if (!order?.staffPhone) {
+    if (!order?.staffPhone || order.staffPhone === '待分配') {
       Taro.showToast({
         title: '暂无服务人员信息',
         icon: 'none'
@@ -282,18 +282,19 @@ const ServiceDetailPage: React.FC = () => {
         )}
       </View>
 
-      {(order.status === 'confirmed' || order.status === 'in_service') && (
+      {order.status === 'confirmed' && (
         <View className={styles.actionBar}>
-          {order.status === 'confirmed' && (
-            <Button className={`${styles.actionButton} ${styles.confirmButton}`} onClick={handleConfirm}>
-              确认到访
-            </Button>
-          )}
-          {order.status === 'in_service' && (
-            <Button className={`${styles.actionButton} ${styles.completeButton}`} onClick={handleComplete}>
-              完成服务
-            </Button>
-          )}
+          <Button className={`${styles.actionButton} ${styles.confirmButton}`} onClick={handleConfirm}>
+            确认到访
+          </Button>
+        </View>
+      )}
+
+      {order.status === 'in_service' && (
+        <View className={styles.actionBar}>
+          <Button className={`${styles.actionButton} ${styles.completeButton}`} onClick={handleComplete}>
+            完成服务
+          </Button>
         </View>
       )}
 
@@ -302,6 +303,16 @@ const ServiceDetailPage: React.FC = () => {
           <View style={{ width: '100%', textAlign: 'center', padding: '20rpx' }}>
             <Text style={{ color: '#86909c', fontSize: '28rpx' }}>
               等待服务站确认订单...
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {order.status === 'completed' && (
+        <View className={styles.actionBar}>
+          <View style={{ width: '100%', textAlign: 'center', padding: '20rpx' }}>
+            <Text style={{ color: '#00b42a', fontSize: '32rpx', fontWeight: 'bold' }}>
+              ✅ 服务已完成
             </Text>
           </View>
         </View>
