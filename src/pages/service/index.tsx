@@ -5,8 +5,15 @@ import styles from './index.module.scss';
 import { useService } from '@/store/service';
 import { mockServices, serviceStatusLabels } from '@/data/service';
 
+const staffList = [
+  { name: '李师傅', phone: '13900139001', position: '专业理发师' },
+  { name: '王护士', phone: '13900139002', position: '专业陪诊师' },
+  { name: '张医生', phone: '13900139003', position: '健康管理师' },
+  { name: '刘阿姨', phone: '13900139004', position: '家政服务员' }
+];
+
 const ServicePage: React.FC = () => {
-  const { serviceOrders, addServiceOrder, getActiveOrders, getCompletedOrders } = useService();
+  const { serviceOrders, addServiceOrder, updateOrderStatus, getActiveOrders, getCompletedOrders } = useService();
   const [activeTab, setActiveTab] = useState<'services' | 'orders'>('services');
   const [displayActiveOrders, setDisplayActiveOrders] = useState<any[]>([]);
   const [displayCompletedOrders, setDisplayCompletedOrders] = useState<any[]>([]);
@@ -36,7 +43,7 @@ const ServicePage: React.FC = () => {
           const appointmentDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
           const appointmentTime = `${appointmentDate.getFullYear()}-${String(appointmentDate.getMonth() + 1).padStart(2, '0')}-${String(appointmentDate.getDate()).padStart(2, '0')} 10:00`;
 
-          const orderId = addServiceOrder({
+          addServiceOrder({
             serviceName: service.name,
             serviceType: service.id === '1' ? 'meal' :
                         service.id === '2' ? 'barber' :
@@ -48,11 +55,41 @@ const ServicePage: React.FC = () => {
           });
 
           Taro.showToast({
-            title: '预约成功',
-            icon: 'success'
+            title: '预约成功，服务站正在处理...',
+            icon: 'success',
+            duration: 2000
           });
 
+          setTimeout(() => {
+            Taro.showToast({
+              title: '服务站已确认订单',
+              icon: 'success'
+            });
+          }, 2000);
+
           setActiveTab('orders');
+        }
+      }
+    });
+  };
+
+  const simulateServiceStationConfirm = (orderId: string) => {
+    const randomStaff = staffList[Math.floor(Math.random() * staffList.length)];
+
+    Taro.showModal({
+      title: '模拟服务站处理',
+      content: `将为订单分配服务人员：${randomStaff.name}`,
+      success: (res) => {
+        if (res.confirm) {
+          updateOrderStatus(orderId, 'confirmed', {
+            name: randomStaff.name,
+            phone: randomStaff.phone
+          });
+
+          Taro.showToast({
+            title: '订单已确认',
+            icon: 'success'
+          });
         }
       }
     });
@@ -157,7 +194,34 @@ const ServicePage: React.FC = () => {
                       <Text className={styles.infoLabel}>预约时间：</Text>
                       <Text className={styles.infoValue}>{order.appointmentTime}</Text>
                     </View>
+                    {order.staffName && order.staffName !== '待分配' && (
+                      <View className={styles.infoRow}>
+                        <Text className={styles.infoLabel}>服务人员：</Text>
+                        <Text className={styles.infoValue}>{order.staffName}</Text>
+                      </View>
+                    )}
+                    {order.staffPhone && order.staffPhone !== '待分配' && (
+                      <View className={styles.infoRow}>
+                        <Text className={styles.infoLabel}>联系电话：</Text>
+                        <Text className={styles.infoValue}>{order.staffPhone}</Text>
+                      </View>
+                    )}
                   </View>
+
+                  {order.status === 'pending' && (
+                    <View className={styles.staffInfo}>
+                      <Button
+                        className={styles.simulateButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          simulateServiceStationConfirm(order.id);
+                        }}
+                      >
+                        模拟服务站确认
+                      </Button>
+                    </View>
+                  )}
+
                   {order.staffName && order.staffName !== '待分配' && (
                     <View className={styles.staffInfo}>
                       <View className={styles.staffRow}>

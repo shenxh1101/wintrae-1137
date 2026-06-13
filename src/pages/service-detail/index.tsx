@@ -9,9 +9,16 @@ const ServiceDetailPage: React.FC = () => {
   const [summary, setSummary] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [order, setOrder] = useState<any>(null);
+  const [orderId, setOrderId] = useState<string>('');
 
   useEffect(() => {
-    const orderId = (Taro.getCurrentInstance().router?.params as any)?.orderId;
+    const params = Taro.getCurrentInstance().router?.params as any;
+    if (params?.orderId) {
+      setOrderId(params.orderId);
+    }
+  }, []);
+
+  useEffect(() => {
     if (orderId) {
       const orderData = getOrderById(orderId);
       if (orderData) {
@@ -19,12 +26,12 @@ const ServiceDetailPage: React.FC = () => {
         if (orderData.summary) {
           setSummary(orderData.summary);
         }
-        if (orderData.photos) {
+        if (orderData.photos && orderData.photos.length > 0) {
           setPhotos(orderData.photos);
         }
       }
     }
-  }, [getOrderById]);
+  }, [orderId, getOrderById]);
 
   const getStatusInfo = () => {
     if (!order) return { icon: '❓', text: '加载中', color: '#86909c' };
@@ -63,7 +70,7 @@ const ServiceDetailPage: React.FC = () => {
   const handleConfirm = () => {
     Taro.showModal({
       title: '确认到访',
-      content: '确认已到达服务地点吗？',
+      content: '确认已到达服务地点，开始服务吗？',
       success: (res) => {
         if (res.confirm) {
           updateOrderStatus(order.id, 'in_service', {
@@ -77,7 +84,7 @@ const ServiceDetailPage: React.FC = () => {
           });
 
           Taro.showToast({
-            title: '已确认到访',
+            title: '已开始服务',
             icon: 'success'
           });
         }
@@ -226,7 +233,7 @@ const ServiceDetailPage: React.FC = () => {
             </View>
 
             <View className={styles.photoSection}>
-              <Text className={styles.cardTitle}>📷 现场照片</Text>
+              <Text className={styles.cardTitle}>📷 现场照片（{photos.length}/9）</Text>
               <View className={styles.photoList}>
                 {photos.map((photo, index) => (
                   <View key={index} className={styles.photoItem}>
@@ -259,7 +266,7 @@ const ServiceDetailPage: React.FC = () => {
 
         {order.photos && order.photos.length > 0 && order.status === 'completed' && (
           <View className={styles.photoSection}>
-            <Text className={styles.cardTitle}>📷 服务照片</Text>
+            <Text className={styles.cardTitle}>📷 服务照片（{order.photos.length}张）</Text>
             <View className={styles.photoList}>
               {order.photos.map((photo: string, index: number) => (
                 <View key={index} className={styles.photoItem}>
@@ -287,6 +294,16 @@ const ServiceDetailPage: React.FC = () => {
               完成服务
             </Button>
           )}
+        </View>
+      )}
+
+      {order.status === 'pending' && (
+        <View className={styles.actionBar}>
+          <View style={{ width: '100%', textAlign: 'center', padding: '20rpx' }}>
+            <Text style={{ color: '#86909c', fontSize: '28rpx' }}>
+              等待服务站确认订单...
+            </Text>
+          </View>
         </View>
       )}
     </ScrollView>
