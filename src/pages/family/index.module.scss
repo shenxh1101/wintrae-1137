@@ -56,6 +56,177 @@
   color: $color-success;
 }
 
+.serviceSection {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-lg;
+}
+
+.serviceGroup {
+  margin-bottom: $spacing-lg;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.serviceGroupTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.serviceCard {
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.serviceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.serviceName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.serviceStatus {
+  font-size: $font-size-sm;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+}
+
+.statusPending {
+  background: rgba($color-text-tertiary, 0.1);
+  color: $color-text-tertiary;
+}
+
+.statusConfirmed {
+  background: rgba($color-info, 0.1);
+  color: $color-info;
+}
+
+.statusInService {
+  background: rgba($color-warning, 0.1);
+  color: $color-warning;
+}
+
+.statusCompleted {
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+}
+
+.serviceInfo {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.serviceTime,
+.serviceStaff {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.serviceProgress {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.serviceSummary {
+  background: rgba(0, 0, 0, 0.03);
+  padding: $spacing-sm;
+  border-radius: $radius-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.summaryLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-xs;
+}
+
+.summaryText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
+}
+
+.servicePhotos {
+  margin-bottom: $spacing-sm;
+}
+
+.photosLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.feedbackArea {
+  border-top: 1rpx solid $color-divider;
+  padding-top: $spacing-sm;
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+}
+
+.feedbackInput {
+  flex: 1;
+  height: 72rpx;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  padding: 0 $spacing-sm;
+}
+
+.feedbackSubmitButton {
+  width: 120rpx;
+  height: 72rpx;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::after {
+    border: none;
+  }
+}
+
+.feedbackDisplay {
+  background: rgba($color-primary, 0.05);
+  padding: $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.feedbackLabel {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.feedbackText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: $line-height-normal;
+}
+
 .healthSection {
   background: $color-bg-card;
   border-radius: $radius-md;

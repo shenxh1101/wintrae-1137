@@ -60,13 +60,32 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const updateOrderSummary = (orderId: string, summary: string, photos: string[]) => {
+    const now = new Date();
+    const completedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
     const updatedOrders = serviceOrders.map(order => {
       if (order.id === orderId) {
         return {
           ...order,
           summary,
           photos,
-          status: 'completed' as const
+          status: 'completed' as const,
+          completedTime
+        };
+      }
+      return order;
+    });
+
+    setServiceOrders(updatedOrders);
+    Taro.setStorageSync('serviceOrders', updatedOrders);
+  };
+
+  const updateOrderFeedback = (orderId: string, feedback: string) => {
+    const updatedOrders = serviceOrders.map(order => {
+      if (order.id === orderId) {
+        return {
+          ...order,
+          feedback
         };
       }
       return order;
@@ -99,6 +118,7 @@ export const ServiceProvider: React.FC<{ children: ReactNode }> = ({ children })
         addServiceOrder,
         updateOrderStatus,
         updateOrderSummary,
+        updateOrderFeedback,
         getActiveOrders,
         getCompletedOrders,
         getOrderById

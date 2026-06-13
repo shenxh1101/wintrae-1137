@@ -5,9 +5,10 @@ import styles from './index.module.scss';
 import { useService } from '@/store/service';
 
 const ServiceDetailPage: React.FC = () => {
-  const { getOrderById, updateOrderStatus, updateOrderSummary } = useService();
+  const { getOrderById, updateOrderStatus, updateOrderSummary, updateOrderFeedback } = useService();
   const [summary, setSummary] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [feedback, setFeedback] = useState('');
   const [order, setOrder] = useState<any>(null);
   const [orderId, setOrderId] = useState<string>('');
 
@@ -28,6 +29,9 @@ const ServiceDetailPage: React.FC = () => {
         }
         if (orderData.photos && orderData.photos.length > 0) {
           setPhotos(orderData.photos);
+        }
+        if (orderData.feedback) {
+          setFeedback(orderData.feedback);
         }
       }
     }
@@ -119,12 +123,30 @@ const ServiceDetailPage: React.FC = () => {
             title: '服务已完成',
             icon: 'success'
           });
-
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
         }
       }
+    });
+  };
+
+  const handleSubmitFeedback = () => {
+    if (!feedback.trim()) {
+      Taro.showToast({
+        title: '请输入反馈内容',
+        icon: 'none'
+      });
+      return;
+    }
+
+    updateOrderFeedback && updateOrderFeedback(order.id, feedback);
+
+    setOrder({
+      ...order,
+      feedback
+    });
+
+    Taro.showToast({
+      title: '反馈已提交',
+      icon: 'success'
     });
   };
 
@@ -219,6 +241,15 @@ const ServiceDetailPage: React.FC = () => {
           </View>
         </View>
 
+        {order.status === 'confirmed' && (
+          <View className={styles.actionCard}>
+            <Text className={styles.actionTitle}>📍 上门服务</Text>
+            <Text className={styles.actionDesc}>
+              服务人员已分配，请保持电话畅通。到达后请点击下方按钮确认到访。
+            </Text>
+          </View>
+        )}
+
         {(order.status === 'confirmed' || order.status === 'in_service') && (
           <>
             <View className={styles.summarySection}>
@@ -255,30 +286,63 @@ const ServiceDetailPage: React.FC = () => {
           </>
         )}
 
-        {order.summary && order.status === 'completed' && (
-          <View className={styles.summarySection}>
-            <Text className={styles.cardTitle}>📝 服务小结</Text>
-            <Text style={{ fontSize: '28rpx', color: '#4e5969', lineHeight: '1.8' }}>
-              {order.summary}
-            </Text>
-          </View>
-        )}
-
-        {order.photos && order.photos.length > 0 && order.status === 'completed' && (
-          <View className={styles.photoSection}>
-            <Text className={styles.cardTitle}>📷 服务照片（{order.photos.length}张）</Text>
-            <View className={styles.photoList}>
-              {order.photos.map((photo: string, index: number) => (
-                <View key={index} className={styles.photoItem}>
-                  <Image
-                    className={styles.photoImage}
-                    src={photo}
-                    mode="aspectFill"
-                  />
-                </View>
-              ))}
+        {order.status === 'completed' && (
+          <>
+            <View className={styles.completedSection}>
+              <Text className={styles.completedTitle}>✅ 服务已完成</Text>
+              <Text className={styles.completedTime}>完成时间：{order.completedTime || order.appointmentTime}</Text>
             </View>
-          </View>
+
+            {order.summary && (
+              <View className={styles.summarySection}>
+                <Text className={styles.cardTitle}>📝 服务小结</Text>
+                <Text style={{ fontSize: '28rpx', color: '#4e5969', lineHeight: '1.8' }}>
+                  {order.summary}
+                </Text>
+              </View>
+            )}
+
+            {order.photos && order.photos.length > 0 && (
+              <View className={styles.photoSection}>
+                <Text className={styles.cardTitle}>📷 服务照片（{order.photos.length}张）</Text>
+                <View className={styles.photoList}>
+                  {order.photos.map((photo: string, index: number) => (
+                    <View key={index} className={styles.photoItem}>
+                      <Image
+                        className={styles.photoImage}
+                        src={photo}
+                        mode="aspectFill"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            <View className={styles.feedbackSection}>
+              <Text className={styles.cardTitle}>💬 服务反馈</Text>
+              {order.feedback ? (
+                <View className={styles.feedbackDisplay}>
+                  <Text style={{ fontSize: '28rpx', color: '#4e5969', lineHeight: '1.8' }}>
+                    {order.feedback}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Input
+                    className={styles.summaryInput}
+                    type="textarea"
+                    placeholder="请输入您的服务反馈，帮助我们改进服务..."
+                    value={feedback}
+                    onInput={(e) => setFeedback(e.detail.value)}
+                  />
+                  <Button className={styles.feedbackButton} onClick={handleSubmitFeedback}>
+                    提交反馈
+                  </Button>
+                </>
+              )}
+            </View>
+          </>
         )}
       </View>
 
@@ -303,16 +367,6 @@ const ServiceDetailPage: React.FC = () => {
           <View style={{ width: '100%', textAlign: 'center', padding: '20rpx' }}>
             <Text style={{ color: '#86909c', fontSize: '28rpx' }}>
               等待服务站确认订单...
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {order.status === 'completed' && (
-        <View className={styles.actionBar}>
-          <View style={{ width: '100%', textAlign: 'center', padding: '20rpx' }}>
-            <Text style={{ color: '#00b42a', fontSize: '32rpx', fontWeight: 'bold' }}>
-              ✅ 服务已完成
             </Text>
           </View>
         </View>

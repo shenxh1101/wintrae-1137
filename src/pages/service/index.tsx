@@ -3,7 +3,7 @@ import { View, Text, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import { useService } from '@/store/service';
-import { mockServices, serviceStatusLabels } from '@/data/service';
+import { mockServices } from '@/data/service';
 
 const staffList = [
   { name: '李师傅', phone: '13900139001', position: '专业理发师' },
@@ -17,13 +17,40 @@ const ServicePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'services' | 'orders'>('services');
   const [displayActiveOrders, setDisplayActiveOrders] = useState<any[]>([]);
   const [displayCompletedOrders, setDisplayCompletedOrders] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<'all' | 'today' | 'week'>('all');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const active = getActiveOrders();
-    const completed = getCompletedOrders();
+    let completed = getCompletedOrders();
+
+    if (filterType === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      completed = completed.filter(order => {
+        const orderDate = new Date(order.appointmentTime);
+        return orderDate >= today;
+      });
+    } else if (filterType === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      completed = completed.filter(order => {
+        const orderDate = new Date(order.appointmentTime);
+        return orderDate >= weekAgo;
+      });
+    }
+
     setDisplayActiveOrders(active);
     setDisplayCompletedOrders(completed);
-  }, [serviceOrders, getActiveOrders, getCompletedOrders]);
+  }, [serviceOrders, getActiveOrders, getCompletedOrders, filterType, refreshKey]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleServiceClick = (service: any) => {
     if (!service.available) {
@@ -141,6 +168,21 @@ const ServicePage: React.FC = () => {
     }
   };
 
+  const getProgressText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return '等待服务站确认...';
+      case 'confirmed':
+        return '服务人员已分配，等待上门';
+      case 'in_service':
+        return '服务进行中';
+      case 'completed':
+        return '服务已完成';
+      default:
+        return '';
+    }
+  };
+
   return (
     <ScrollView className={styles.servicePage} scrollY>
       <View className={styles.tabBar}>
@@ -182,7 +224,9 @@ const ServicePage: React.FC = () => {
         <View className={styles.orderList}>
           {displayActiveOrders.length > 0 && (
             <>
-              <Text style={{ fontSize: '28rpx', color: '#4e5969', marginBottom: '16rpx' }}>待服务</Text>
+              <View className={styles.sectionHeader}>
+                <Text className={styles.sectionTitle}>📋 待服务订单（{displayActiveOrders.length}）</Text>
+              </View>
               {displayActiveOrders.map(order => (
                 <View
                   key={order.id}
@@ -190,36 +234,38 @@ const ServicePage: React.FC = () => {
                   onClick={() => handleViewDetail(order.id)}
                 >
                   <View className={styles.orderHeader}>
-                    <Text className={styles.orderName}>{order.serviceName}</Text>
+                    <View>
+                      <Text className={styles.orderName}>{order.serviceName}</Text>
+                      <Text className={styles.orderProgress}>{getProgressText(order.status)}</Text>
+                    </View>
                     <Text className={`${styles.orderStatus} ${getStatusClass(order.status)}`}>
                       {getStatusText(order.status)}
                     </Text>
                   </View>
+
                   <View className={styles.orderInfo}>
                     <View className={styles.infoRow}>
-                      <Text className={styles.infoLabel}>预约时间：</Text>
+                      <Text className={styles.infoLabel}>📅 预约时间：</Text>
                       <Text className={styles.infoValue}>{order.appointmentTime}</Text>
                     </View>
                     {order.staffName && order.staffName !== '待分配' && (
-                      <View className={styles.infoRow}>
-                        <Text className={styles.infoLabel}>服务人员：</Text>
-                        <Text className={styles.infoValue}>{order.staffName}</Text>
-                      </View>
-                    )}
-                    {order.staffPhone && order.staffPhone !== '待分配' && (
-                      <View className={styles.infoRow}>
-                        <Text className={styles.infoLabel}>联系电话：</Text>
-                        <Text className={styles.infoValue}>{order.staffPhone}</Text>
-                      </View>
+                      <>
+                        <View className={styles.infoRow}>
+                          <Text className={styles.infoLabel}>👨‍💼 服务人员：</Text>
+                          <Text className={styles.infoValue}>{order.staffName}</Text>
+                        </View>
+                        <View className={styles.infoRow}>
+                          <Text className={styles.infoLabel}>📞 联系电话：</Text>
+                          <Text className={styles.infoValue}>{order.staffPhone}</Text>
+                        </View>
+                      </>
                     )}
                   </View>
 
                   {order.staffName && order.staffName !== '待分配' && (
                     <View className={styles.staffInfo}>
                       <View className={styles.staffRow}>
-                        <Text className={styles.staffName}>
-                          👨‍💼 {order.staffName}
-                        </Text>
+                        <Text className={styles.staffName}>👨‍💼 {order.staffName}</Text>
                         <Button
                           className={styles.callButton}
                           onClick={(e) => {
@@ -237,9 +283,34 @@ const ServicePage: React.FC = () => {
             </>
           )}
 
+          <View className={styles.filterSection}>
+            <View className={styles.filterTabs}>
+              <Button
+                className={`${styles.filterTab} ${filterType === 'all' ? styles.filterActive : ''}`}
+                onClick={() => setFilterType('all')}
+              >
+                全部
+              </Button>
+              <Button
+                className={`${styles.filterTab} ${filterType === 'today' ? styles.filterActive : ''}`}
+                onClick={() => setFilterType('today')}
+              >
+                今天
+              </Button>
+              <Button
+                className={`${styles.filterTab} ${filterType === 'week' ? styles.filterActive : ''}`}
+                onClick={() => setFilterType('week')}
+              >
+                本周
+              </Button>
+            </View>
+          </View>
+
           {displayCompletedOrders.length > 0 && (
             <>
-              <Text style={{ fontSize: '28rpx', color: '#4e5969', marginBottom: '16rpx', marginTop: '32rpx' }}>历史记录</Text>
+              <View className={styles.sectionHeader}>
+                <Text className={styles.sectionTitle}>📚 历史记录（{displayCompletedOrders.length}）</Text>
+              </View>
               {displayCompletedOrders.map(order => (
                 <View
                   key={order.id}
@@ -247,31 +318,45 @@ const ServicePage: React.FC = () => {
                   onClick={() => handleViewDetail(order.id)}
                 >
                   <View className={styles.orderHeader}>
-                    <Text className={styles.orderName}>{order.serviceName}</Text>
+                    <View>
+                      <Text className={styles.orderName}>{order.serviceName}</Text>
+                      <Text className={styles.orderTime}>完成时间：{order.completedTime || order.appointmentTime}</Text>
+                    </View>
                     <Text className={`${styles.orderStatus} ${getStatusClass(order.status)}`}>
                       {getStatusText(order.status)}
                     </Text>
                   </View>
+
                   <View className={styles.orderInfo}>
                     <View className={styles.infoRow}>
-                      <Text className={styles.infoLabel}>服务时间：</Text>
-                      <Text className={styles.infoValue}>{order.appointmentTime}</Text>
+                      <Text className={styles.infoLabel}>👨‍💼 服务人员：</Text>
+                      <Text className={styles.infoValue}>{order.staffName || '未知'}</Text>
                     </View>
-                    {order.staffName && (
-                      <View className={styles.infoRow}>
-                        <Text className={styles.infoLabel}>服务人员：</Text>
-                        <Text className={styles.infoValue}>{order.staffName}</Text>
-                      </View>
-                    )}
                     {order.summary && (
-                      <View className={styles.infoRow}>
-                        <Text className={styles.infoLabel}>服务小结：</Text>
-                        <Text className={styles.infoValue} style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {order.summary}
-                        </Text>
+                      <View className={styles.summaryRow}>
+                        <Text className={styles.summaryLabel}>📝 服务小结：</Text>
+                        <Text className={styles.summaryContent}>{order.summary}</Text>
                       </View>
                     )}
                   </View>
+
+                  {order.photos && order.photos.length > 0 && (
+                    <View className={styles.photoPreview}>
+                      <Text className={styles.photoLabel}>📷 服务照片：</Text>
+                      <View className={styles.photoList}>
+                        {order.photos.slice(0, 3).map((photo: string, index: number) => (
+                          <View key={index} className={styles.photoThumb}>
+                            <Text style={{ fontSize: '32rpx' }}>📷</Text>
+                          </View>
+                        ))}
+                        {order.photos.length > 3 && (
+                          <View className={styles.photoMore}>
+                            <Text style={{ fontSize: '24rpx', color: '#86909c' }}>+{order.photos.length - 3}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
                 </View>
               ))}
             </>
