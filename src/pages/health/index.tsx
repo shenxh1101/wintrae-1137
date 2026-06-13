@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockHealthRecords } from '@/data/health';
-
-interface FormData {
-  bloodPressure: string;
-  bloodSugar: string;
-  sleepHours: string;
-  medication: string;
-}
+import { useHealth } from '@/store/health';
+import { HealthRecord } from '@/types';
 
 const HealthPage: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
+  const { healthRecords, addHealthRecord, getRecentRecords } = useHealth();
+  const [formData, setFormData] = useState({
     bloodPressure: '',
     bloodSugar: '',
     sleepHours: '',
     medication: ''
   });
+
+  useEffect(() => {
+    if (healthRecords.length === 0) {
+      const stored = Taro.getStorageSync('healthRecords');
+    }
+  }, [healthRecords]);
 
   const handleSubmit = () => {
     if (!formData.bloodPressure || !formData.bloodSugar || !formData.sleepHours) {
@@ -27,6 +28,24 @@ const HealthPage: React.FC = () => {
       });
       return;
     }
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const status = calculateStatus(
+      formData.bloodPressure,
+      formData.bloodSugar,
+      parseFloat(formData.sleepHours)
+    );
+
+    addHealthRecord({
+      date: dateStr,
+      bloodPressure: formData.bloodPressure,
+      bloodSugar: formData.bloodSugar,
+      sleepHours: parseFloat(formData.sleepHours),
+      medication: formData.medication,
+      status
+    });
 
     Taro.showToast({
       title: '打卡成功',
@@ -39,6 +58,27 @@ const HealthPage: React.FC = () => {
       sleepHours: '',
       medication: ''
     });
+  };
+
+  const calculateStatus = (
+    bloodPressure: string,
+    bloodSugar: string,
+    sleepHours: number
+  ): 'normal' | 'warning' | 'abnormal' => {
+    const [systolic] = bloodPressure.split('/').map(Number);
+    const sugar = parseFloat(bloodSugar);
+
+    const bpAbnormal = systolic > 140 || systolic < 90;
+    const sugarAbnormal = sugar > 7.8 || sugar < 3.9;
+    const sleepAbnormal = sleepHours < 5 || sleepHours > 9;
+
+    if ((bpAbnormal && systolic > 160) || sugarAbnormal && sugar > 10) {
+      return 'abnormal';
+    }
+    if (bpAbnormal || sugarAbnormal || sleepAbnormal) {
+      return 'warning';
+    }
+    return 'normal';
   };
 
   const getStatusClass = (status: string) => {
@@ -66,6 +106,8 @@ const HealthPage: React.FC = () => {
         return '';
     }
   };
+
+  const displayRecords = getRecentRecords(7);
 
   return (
     <ScrollView className={styles.healthPage} scrollY>
@@ -141,9 +183,9 @@ const HealthPage: React.FC = () => {
 
       <View className={styles.historySection}>
         <Text className={styles.sectionTitle}>📅 打卡记录</Text>
-        {mockHealthRecords.length > 0 ? (
+        {displayRecords.length > 0 ? (
           <View className={styles.historyList}>
-            {mockHealthRecords.slice(0, 7).map(record => (
+            {displayRecords.map(record => (
               <View key={record.id} className={styles.historyItem}>
                 <Text className={styles.historyDate}>{record.date}</Text>
                 <View className={styles.historyData}>

@@ -151,6 +151,11 @@
   color: $color-info;
 }
 
+.statusInService {
+  background: rgba($color-warning, 0.1);
+  color: $color-warning;
+}
+
 .statusCompleted {
   background: rgba($color-success, 0.1);
   color: $color-success;

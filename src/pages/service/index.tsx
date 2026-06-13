@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockServices, mockServiceOrders, serviceStatusLabels } from '@/data/service';
+import { useService } from '@/store/service';
+import { mockServices, serviceStatusLabels } from '@/data/service';
 
 const ServicePage: React.FC = () => {
+  const { serviceOrders, addServiceOrder, getActiveOrders, getCompletedOrders } = useService();
   const [activeTab, setActiveTab] = useState<'services' | 'orders'>('services');
+  const [displayActiveOrders, setDisplayActiveOrders] = useState<any[]>([]);
+  const [displayCompletedOrders, setDisplayCompletedOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    const active = getActiveOrders();
+    const completed = getCompletedOrders();
+    setDisplayActiveOrders(active);
+    setDisplayCompletedOrders(completed);
+  }, [serviceOrders, getActiveOrders, getCompletedOrders]);
 
   const handleServiceClick = (service: any) => {
     if (!service.available) {
@@ -21,17 +32,34 @@ const ServicePage: React.FC = () => {
       content: `确定预约 ${service.name} 吗？`,
       success: (res) => {
         if (res.confirm) {
+          const now = new Date();
+          const appointmentDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          const appointmentTime = `${appointmentDate.getFullYear()}-${String(appointmentDate.getMonth() + 1).padStart(2, '0')}-${String(appointmentDate.getDate()).padStart(2, '0')} 10:00`;
+
+          const orderId = addServiceOrder({
+            serviceName: service.name,
+            serviceType: service.id === '1' ? 'meal' :
+                        service.id === '2' ? 'barber' :
+                        service.id === '3' ? 'accompany' : 'visit',
+            appointmentTime,
+            status: 'pending',
+            staffName: '待分配',
+            staffPhone: ''
+          });
+
           Taro.showToast({
             title: '预约成功',
             icon: 'success'
           });
+
+          setActiveTab('orders');
         }
       }
     });
   };
 
   const handleCallStaff = (phone: string) => {
-    if (!phone) {
+    if (!phone || phone === '待分配') {
       Taro.showToast({
         title: '暂无服务人员信息',
         icon: 'none'
@@ -43,12 +71,20 @@ const ServicePage: React.FC = () => {
     });
   };
 
+  const handleViewDetail = (orderId: string) => {
+    Taro.navigateTo({
+      url: `/pages/service-detail/index?orderId=${orderId}`
+    });
+  };
+
   const getStatusClass = (status: string) => {
     switch (status) {
       case 'pending':
         return styles.statusPending;
       case 'confirmed':
         return styles.statusConfirmed;
+      case 'in_service':
+        return styles.statusInService;
       case 'completed':
         return styles.statusCompleted;
       case 'cancelled':
@@ -58,8 +94,9 @@ const ServicePage: React.FC = () => {
     }
   };
 
-  const pendingOrders = mockServiceOrders.filter(order => order.status === 'pending' || order.status === 'confirmed');
-  const completedOrders = mockServiceOrders.filter(order => order.status === 'completed' || order.status === 'cancelled');
+  const getStatusText = (status: string) => {
+    return serviceStatusLabels[status as keyof typeof serviceStatusLabels] || status;
+  };
 
   return (
     <ScrollView className={styles.servicePage} scrollY>
@@ -100,15 +137,19 @@ const ServicePage: React.FC = () => {
         </View>
       ) : (
         <View className={styles.orderList}>
-          {pendingOrders.length > 0 && (
+          {displayActiveOrders.length > 0 && (
             <>
               <Text style={{ fontSize: '28rpx', color: '#4e5969', marginBottom: '16rpx' }}>待服务</Text>
-              {pendingOrders.map(order => (
-                <View key={order.id} className={styles.orderCard}>
+              {displayActiveOrders.map(order => (
+                <View
+                  key={order.id}
+                  className={styles.orderCard}
+                  onClick={() => handleViewDetail(order.id)}
+                >
                   <View className={styles.orderHeader}>
                     <Text className={styles.orderName}>{order.serviceName}</Text>
                     <Text className={`${styles.orderStatus} ${getStatusClass(order.status)}`}>
-                      {serviceStatusLabels[order.status]}
+                      {getStatusText(order.status)}
                     </Text>
                   </View>
                   <View className={styles.orderInfo}>
@@ -125,7 +166,10 @@ const ServicePage: React.FC = () => {
                         </Text>
                         <Button
                           className={styles.callButton}
-                          onClick={() => handleCallStaff(order.staffPhone || '')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCallStaff(order.staffPhone || '');
+                          }}
                         >
                           拨打电话
                         </Button>
@@ -137,15 +181,19 @@ const ServicePage: React.FC = () => {
             </>
           )}
 
-          {completedOrders.length > 0 && (
+          {displayCompletedOrders.length > 0 && (
             <>
               <Text style={{ fontSize: '28rpx', color: '#4e5969', marginBottom: '16rpx', marginTop: '32rpx' }}>历史记录</Text>
-              {completedOrders.map(order => (
-                <View key={order.id} className={styles.orderCard}>
+              {displayCompletedOrders.map(order => (
+                <View
+                  key={order.id}
+                  className={styles.orderCard}
+                  onClick={() => handleViewDetail(order.id)}
+                >
                   <View className={styles.orderHeader}>
                     <Text className={styles.orderName}>{order.serviceName}</Text>
                     <Text className={`${styles.orderStatus} ${getStatusClass(order.status)}`}>
-                      {serviceStatusLabels[order.status]}
+                      {getStatusText(order.status)}
                     </Text>
                   </View>
                   <View className={styles.orderInfo}>
@@ -159,13 +207,21 @@ const ServicePage: React.FC = () => {
                         <Text className={styles.infoValue}>{order.staffName}</Text>
                       </View>
                     )}
+                    {order.summary && (
+                      <View className={styles.infoRow}>
+                        <Text className={styles.infoLabel}>服务小结：</Text>
+                        <Text className={styles.infoValue} style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {order.summary}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               ))}
             </>
           )}
 
-          {mockServiceOrders.length === 0 && (
+          {displayActiveOrders.length === 0 && displayCompletedOrders.length === 0 && (
             <View className={styles.emptyState}>
               <Text className={styles.emptyIcon}>📅</Text>
               <Text className={styles.emptyText}>暂无预约记录</Text>

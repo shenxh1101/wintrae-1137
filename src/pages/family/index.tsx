@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockHealthRecords } from '@/data/health';
+import { useHealth } from '@/store/health';
 import { mockMessages, mockAlerts } from '@/data/family';
 import { mockUser } from '@/data/home';
 
 const FamilyPage: React.FC = () => {
+  const { healthRecords, getRecentRecords } = useHealth();
   const [messageText, setMessageText] = useState('');
+  const [displayRecords, setDisplayRecords] = useState<any[]>([]);
+
+  useEffect(() => {
+    const records = getRecentRecords(7);
+    setDisplayRecords(records);
+  }, [healthRecords, getRecentRecords]);
 
   const handleSendMessage = () => {
     if (!messageText.trim()) {
@@ -92,9 +99,9 @@ const FamilyPage: React.FC = () => {
 
       <View className={styles.healthSection}>
         <Text className={styles.sectionTitle}>📊 近7天健康记录</Text>
-        {mockHealthRecords.length > 0 ? (
+        {displayRecords.length > 0 ? (
           <View className={styles.healthList}>
-            {mockHealthRecords.slice(0, 7).map(record => (
+            {displayRecords.map(record => (
               <View key={record.id} className={styles.healthItem}>
                 <Text className={styles.healthDate}>{record.date.slice(5)}</Text>
                 <View className={styles.healthData}>

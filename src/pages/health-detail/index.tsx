@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import styles from './index.module.scss';
-import { mockHealthRecords } from '@/data/health';
+import { useHealth } from '@/store/health';
 import { mockHealthStatistics, healthTrends } from '@/data/health-detail';
 
 const HealthDetailPage: React.FC = () => {
+  const { healthRecords, getRecentRecords } = useHealth();
+  const [displayRecords, setDisplayRecords] = useState<any[]>([]);
+
+  useEffect(() => {
+    const records = getRecentRecords(7);
+    setDisplayRecords(records);
+  }, [healthRecords, getRecentRecords]);
+
   const getStatusClass = (status: string) => {
     switch (status) {
       case 'normal':
@@ -59,19 +67,25 @@ const HealthDetailPage: React.FC = () => {
         <Text className={styles.statsTitle}>📊 本月健康概览</Text>
         <View className={styles.statsGrid}>
           <View className={styles.statItem}>
-            <Text className={styles.statValue}>{mockHealthStatistics.totalRecords}</Text>
+            <Text className={styles.statValue}>{displayRecords.length > 0 ? displayRecords.length : mockHealthStatistics.totalRecords}</Text>
             <Text className={styles.statLabel}>打卡天数</Text>
           </View>
           <View className={styles.statItem}>
-            <Text className={styles.statValue}>{mockHealthStatistics.normalDays}</Text>
+            <Text className={styles.statValue}>
+              {displayRecords.filter(r => r.status === 'normal').length || mockHealthStatistics.normalDays}
+            </Text>
             <Text className={styles.statLabel}>正常天数</Text>
           </View>
           <View className={styles.statItem}>
-            <Text className={styles.statValue}>{mockHealthStatistics.warningDays}</Text>
+            <Text className={styles.statValue}>
+              {displayRecords.filter(r => r.status === 'warning').length || mockHealthStatistics.warningDays}
+            </Text>
             <Text className={styles.statLabel}>偏高天数</Text>
           </View>
           <View className={styles.statItem}>
-            <Text className={styles.statValue}>{mockHealthStatistics.abnormalDays}</Text>
+            <Text className={styles.statValue}>
+              {displayRecords.filter(r => r.status === 'abnormal').length || mockHealthStatistics.abnormalDays}
+            </Text>
             <Text className={styles.statLabel}>异常天数</Text>
           </View>
         </View>
@@ -157,9 +171,9 @@ const HealthDetailPage: React.FC = () => {
       <View className={styles.section}>
         <View className={styles.sectionCard}>
           <Text className={styles.sectionTitle}>📋 完整记录</Text>
-          {mockHealthRecords.length > 0 ? (
+          {displayRecords.length > 0 ? (
             <View className={styles.recordList}>
-              {mockHealthRecords.map(record => (
+              {displayRecords.map(record => (
                 <View key={record.id} className={styles.recordItem}>
                   <Text className={styles.recordDate}>{record.date}</Text>
                   <View className={styles.recordData}>

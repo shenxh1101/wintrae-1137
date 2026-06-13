@@ -4,6 +4,8 @@ import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
 import { mockUser, mockQuickActions, mockAnnouncements } from '@/data/home';
 
+const tabBarPages = ['/pages/health/index', '/pages/service/index', '/pages/emergency/index', '/pages/profile/index'];
+
 const HomePage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState('');
 
@@ -14,7 +16,11 @@ const HomePage: React.FC = () => {
   }, []);
 
   const handleActionClick = (path: string) => {
-    Taro.navigateTo({ url: path });
+    if (tabBarPages.includes(path)) {
+      Taro.switchTab({ url: path });
+    } else {
+      Taro.navigateTo({ url: path });
+    }
   };
 
   return (

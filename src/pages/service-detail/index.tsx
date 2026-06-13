@@ -1,17 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, Button, Input, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockServiceDetail } from '@/data/service-detail';
+import { useService } from '@/store/service';
 
 const ServiceDetailPage: React.FC = () => {
+  const { getOrderById, updateOrderStatus, updateOrderSummary } = useService();
   const [summary, setSummary] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [order, setOrder] = useState<any>(null);
 
-  const serviceDetail = mockServiceDetail;
+  useEffect(() => {
+    const orderId = (Taro.getCurrentInstance().router?.params as any)?.orderId;
+    if (orderId) {
+      const orderData = getOrderById(orderId);
+      if (orderData) {
+        setOrder(orderData);
+        if (orderData.summary) {
+          setSummary(orderData.summary);
+        }
+        if (orderData.photos) {
+          setPhotos(orderData.photos);
+        }
+      }
+    }
+  }, [getOrderById]);
 
   const getStatusInfo = () => {
-    switch (serviceDetail.status) {
+    if (!order) return { icon: '❓', text: '加载中', color: '#86909c' };
+
+    switch (order.status) {
       case 'pending':
         return { icon: '⏳', text: '待确认', color: '#86909c' };
       case 'confirmed':
@@ -30,8 +48,15 @@ const ServiceDetailPage: React.FC = () => {
   const statusInfo = getStatusInfo();
 
   const handleCall = () => {
+    if (!order?.staffPhone) {
+      Taro.showToast({
+        title: '暂无服务人员信息',
+        icon: 'none'
+      });
+      return;
+    }
     Taro.makePhoneCall({
-      phoneNumber: serviceDetail.staff.phone
+      phoneNumber: order.staffPhone
     });
   };
 
@@ -41,6 +66,16 @@ const ServiceDetailPage: React.FC = () => {
       content: '确认已到达服务地点吗？',
       success: (res) => {
         if (res.confirm) {
+          updateOrderStatus(order.id, 'in_service', {
+            name: order.staffName || '服务人员',
+            phone: order.staffPhone || '13900139000'
+          });
+
+          setOrder({
+            ...order,
+            status: 'in_service'
+          });
+
           Taro.showToast({
             title: '已确认到访',
             icon: 'success'
@@ -64,10 +99,20 @@ const ServiceDetailPage: React.FC = () => {
       content: '确认提交服务小结并完成服务吗？',
       success: (res) => {
         if (res.confirm) {
+          updateOrderSummary(order.id, summary, photos);
+
+          setOrder({
+            ...order,
+            status: 'completed',
+            summary,
+            photos
+          });
+
           Taro.showToast({
             title: '服务已完成',
             icon: 'success'
           });
+
           setTimeout(() => {
             Taro.navigateBack();
           }, 1500);
@@ -77,11 +122,31 @@ const ServiceDetailPage: React.FC = () => {
   };
 
   const handleAddPhoto = () => {
-    Taro.showToast({
-      title: '请上传现场照片',
-      icon: 'none'
+    Taro.chooseImage({
+      count: 3,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const newPhotos = [...photos, ...res.tempFilePaths].slice(0, 9);
+        setPhotos(newPhotos);
+      }
     });
   };
+
+  const handleRemovePhoto = (index: number) => {
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+  };
+
+  if (!order) {
+    return (
+      <View className={styles.serviceDetailPage}>
+        <View style={{ padding: '32rpx', textAlign: 'center' }}>
+          <Text>订单加载中...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView className={styles.serviceDetailPage} scrollY>
@@ -91,7 +156,7 @@ const ServiceDetailPage: React.FC = () => {
             <Text className={styles.statusIcon}>{statusInfo.icon}</Text>
             <Text className={styles.statusText}>{statusInfo.text}</Text>
           </View>
-          <Text className={styles.orderId}>订单号：{serviceDetail.orderId}</Text>
+          <Text className={styles.orderId}>订单号：{order.id}</Text>
         </View>
       </View>
 
@@ -100,34 +165,34 @@ const ServiceDetailPage: React.FC = () => {
           <Text className={styles.cardTitle}>📋 服务信息</Text>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>服务项目</Text>
-            <Text className={styles.infoValue}>{serviceDetail.serviceName}</Text>
+            <Text className={styles.infoValue}>{order.serviceName}</Text>
           </View>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>预约时间</Text>
-            <Text className={styles.infoValue}>{serviceDetail.appointmentTime}</Text>
+            <Text className={styles.infoValue}>{order.appointmentTime}</Text>
           </View>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>服务地址</Text>
-            <Text className={styles.infoValue}>{serviceDetail.appointmentAddress}</Text>
+            <Text className={styles.infoValue}>阳光社区 1号楼 101室</Text>
           </View>
         </View>
 
         <View className={styles.staffCard}>
           <Text className={styles.cardTitle}>👨‍💼 服务人员</Text>
           <View className={styles.staffHeader}>
-            <Image
-              className={styles.staffAvatar}
-              src={serviceDetail.staff.avatar}
-              mode="aspectFill"
-            />
-            <View className={styles.staffInfo}>
-              <Text className={styles.staffName}>{serviceDetail.staff.name}</Text>
-              <Text className={styles.staffPosition}>{serviceDetail.staff.position}</Text>
-              <Text className={styles.staffPhone}>{serviceDetail.staff.phone}</Text>
+            <View className={styles.staffAvatar}>
+              <Text style={{ fontSize: '48rpx' }}>👨‍💼</Text>
             </View>
-            <Button className={styles.callButton} onClick={handleCall}>
-              拨打电话
-            </Button>
+            <View className={styles.staffInfo}>
+              <Text className={styles.staffName}>{order.staffName || '待分配'}</Text>
+              <Text className={styles.staffPosition}>专业服务人员</Text>
+              <Text className={styles.staffPhone}>{order.staffPhone || '暂无'}</Text>
+            </View>
+            {order.staffPhone && order.staffPhone !== '待分配' && (
+              <Button className={styles.callButton} onClick={handleCall}>
+                拨打电话
+              </Button>
+            )}
           </View>
         </View>
 
@@ -135,19 +200,19 @@ const ServiceDetailPage: React.FC = () => {
           <Text className={styles.cardTitle}>👴 老人信息</Text>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>姓名</Text>
-            <Text className={styles.infoValue}>{serviceDetail.elder.name}</Text>
+            <Text className={styles.infoValue}>王大爷</Text>
           </View>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>电话</Text>
-            <Text className={styles.infoValue}>{serviceDetail.elder.phone}</Text>
+            <Text className={styles.infoValue}>13800138000</Text>
           </View>
           <View className={styles.infoRow}>
             <Text className={styles.infoLabel}>地址</Text>
-            <Text className={styles.infoValue}>{serviceDetail.elder.address}</Text>
+            <Text className={styles.infoValue}>阳光社区 1号楼 101室</Text>
           </View>
         </View>
 
-        {serviceDetail.status === 'confirmed' || serviceDetail.status === 'in_service' ? (
+        {(order.status === 'confirmed' || order.status === 'in_service') && (
           <>
             <View className={styles.summarySection}>
               <Text className={styles.cardTitle}>📝 服务小结</Text>
@@ -169,41 +234,61 @@ const ServiceDetailPage: React.FC = () => {
                       className={styles.photoImage}
                       src={photo}
                       mode="aspectFill"
+                      onClick={() => handleRemovePhoto(index)}
                     />
                   </View>
                 ))}
-                <View className={styles.addPhotoButton} onClick={handleAddPhoto}>
-                  <Text>+</Text>
-                </View>
+                {photos.length < 9 && (
+                  <View className={styles.addPhotoButton} onClick={handleAddPhoto}>
+                    <Text>+</Text>
+                  </View>
+                )}
               </View>
             </View>
           </>
-        ) : null}
+        )}
 
-        {serviceDetail.summary && (
+        {order.summary && order.status === 'completed' && (
           <View className={styles.summarySection}>
             <Text className={styles.cardTitle}>📝 服务小结</Text>
             <Text style={{ fontSize: '28rpx', color: '#4e5969', lineHeight: '1.8' }}>
-              {serviceDetail.summary}
+              {order.summary}
             </Text>
+          </View>
+        )}
+
+        {order.photos && order.photos.length > 0 && order.status === 'completed' && (
+          <View className={styles.photoSection}>
+            <Text className={styles.cardTitle}>📷 服务照片</Text>
+            <View className={styles.photoList}>
+              {order.photos.map((photo: string, index: number) => (
+                <View key={index} className={styles.photoItem}>
+                  <Image
+                    className={styles.photoImage}
+                    src={photo}
+                    mode="aspectFill"
+                  />
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </View>
 
-      {serviceDetail.status === 'confirmed' || serviceDetail.status === 'in_service' ? (
+      {(order.status === 'confirmed' || order.status === 'in_service') && (
         <View className={styles.actionBar}>
-          {serviceDetail.status === 'confirmed' && (
+          {order.status === 'confirmed' && (
             <Button className={`${styles.actionButton} ${styles.confirmButton}`} onClick={handleConfirm}>
               确认到访
             </Button>
           )}
-          {serviceDetail.status === 'in_service' && (
+          {order.status === 'in_service' && (
             <Button className={`${styles.actionButton} ${styles.completeButton}`} onClick={handleComplete}>
               完成服务
             </Button>
           )}
         </View>
-      ) : null}
+      )}
     </ScrollView>
   );
 };
